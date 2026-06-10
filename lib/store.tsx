@@ -1,32 +1,35 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { DashboardData, Launch } from "./types";
 import { seedData, SCHEMA_VERSION } from "@/data/seed";
 
 const STORAGE_KEY = "dashboard-lanci-carlotta-lolli";
 
+export type SyncMode = "loading" | "remote" | "local";
+export type SaveState = "idle" | "saving" | "saved" | "error";
+
 interface StoreContextValue {
   data: DashboardData;
-  /** Aggiorna un singolo lancio sostituendolo per id */
   updateLaunch: (launch: Launch) => void;
-  /** Sostituisce l'intero dataset (import) */
   replaceData: (data: DashboardData) => void;
-  /** Ripristina i dati originali (seed) */
   resetToSeed: () => void;
-  /** true quando lo stato è stato idratato dal localStorage */
   hydrated: boolean;
+  /** "remote" = sincronizzato su Vercel Blob, "local" = solo questo browser */
+  mode: SyncMode;
+  /** Stato dell'ultimo salvataggio sul cloud */
+  saveState: SaveState;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
-function loadInitial(): DashboardData {
+/** Carica i dati dal localStorage (cache), altrimenti i dati seed. */
+function loadLocal(): DashboardData {
   if (typeof window === "undefined") return seedData;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return seedData;
     const parsed = JSON.parse(raw) as DashboardData;
-    // Se cambia la versione dello schema, ripartiamo dal seed.
     if (!parsed || parsed.version !== SCHEMA_VERSION || !Array.isArray(parsed.launches)) {
       return seedData;
     }
@@ -36,25 +39,95 @@ function loadInitial(): DashboardData {
   }
 }
 
+function saveLocal(data: DashboardData) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    /* storage non disponibile: ignoriamo */
+  }
+}
+
+async function fetchRemote(): Promise<{ configured: boolean; data: DashboardData | null }> {
+  const res = await fetch("/api/data", { cache: "no-store" });
+  if (!res.ok) return { configured: false, data: null };
+  return res.json();
+}
+
+async function pushRemote(data: DashboardData): Promise<boolean> {
+  const res = await fetch("/api/data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.ok;
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<DashboardData>(seedData);
   const [hydrated, setHydrated] = useState(false);
+  const [mode, setMode] = useState<SyncMode>("loading");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
 
-  // Idratazione lato client per evitare mismatch SSR.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Evita di salvare in remoto durante l'idratazione iniziale.
+  const skipNextSave = useRef(true);
+
+  // Idratazione: prima il cloud, poi fallback su localStorage/seed.
   useEffect(() => {
-    setData(loadInitial());
-    setHydrated(true);
+    let cancelled = false;
+    (async () => {
+      const local = loadLocal();
+      try {
+        const remote = await fetchRemote();
+        if (cancelled) return;
+        if (remote.configured) {
+          if (remote.data && Array.isArray(remote.data.launches)) {
+            // Il cloud è la fonte di verità.
+            setData(remote.data);
+            saveLocal(remote.data);
+          } else {
+            // Cloud collegato ma vuoto: lo inizializziamo coi dati locali/seed.
+            setData(local);
+            skipNextSave.current = false; // forza il primo push
+            void pushRemote(local);
+          }
+          setMode("remote");
+        } else {
+          setData(local);
+          setMode("local");
+        }
+      } catch {
+        if (cancelled) return;
+        setData(local);
+        setMode("local");
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Persistenza su ogni modifica (dopo l'idratazione).
+  // Persistenza ad ogni modifica: localStorage subito, cloud con debounce.
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {
-      /* quota piena o storage non disponibile: ignoriamo */
+    saveLocal(data);
+
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
     }
-  }, [data, hydrated]);
+    if (mode !== "remote") return;
+
+    setSaveState("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const ok = await pushRemote(data);
+      setSaveState(ok ? "saved" : "error");
+      if (ok) setTimeout(() => setSaveState("idle"), 2000);
+    }, 800);
+  }, [data, hydrated, mode]);
 
   const updateLaunch = useCallback((launch: Launch) => {
     setData((prev) => ({
@@ -72,7 +145,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <StoreContext.Provider value={{ data, updateLaunch, replaceData, resetToSeed, hydrated }}>
+    <StoreContext.Provider
+      value={{ data, updateLaunch, replaceData, resetToSeed, hydrated, mode, saveState }}
+    >
       {children}
     </StoreContext.Provider>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, SyncMode, SaveState } from "@/lib/store";
 import { DashboardData } from "@/lib/types";
 import { SCHEMA_VERSION } from "@/data/seed";
 import OverviewView from "./OverviewView";
@@ -10,7 +10,7 @@ import LaunchDetail from "./LaunchDetail";
 const OVERVIEW = "__overview__";
 
 export default function Dashboard() {
-  const { data, replaceData, resetToSeed, hydrated } = useStore();
+  const { data, replaceData, resetToSeed, hydrated, mode, saveState } = useStore();
   const [active, setActive] = useState<string>(OVERVIEW);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +64,10 @@ export default function Dashboard() {
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard Lanci</h1>
-          <p className="text-sm text-slate-500">Carlotta Lolli · corsi di cucina</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-slate-500">Carlotta Lolli · corsi di cucina</p>
+            <SyncBadge mode={mode} saveState={saveState} />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -122,9 +125,46 @@ export default function Dashboard() {
       ) : null}
 
       <footer className="mt-12 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
-        I dati sono salvati nel tuo browser. Usa “Esporta” per conservarne una copia.
+        {mode === "remote"
+          ? "I dati sono salvati e condivisi sul cloud (Vercel Blob)."
+          : "I dati sono salvati nel tuo browser. Usa “Esporta” per conservarne una copia."}
       </footer>
     </div>
+  );
+}
+
+function SyncBadge({ mode, saveState }: { mode: SyncMode; saveState: SaveState }) {
+  if (mode === "loading") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+        Sincronizzazione…
+      </span>
+    );
+  }
+  if (mode === "local") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Solo questo browser
+      </span>
+    );
+  }
+  const label =
+    saveState === "saving"
+      ? "Salvataggio…"
+      : saveState === "error"
+        ? "Errore di salvataggio"
+        : saveState === "saved"
+          ? "Salvato"
+          : "Cloud";
+  const tone =
+    saveState === "error"
+      ? "bg-red-50 text-red-700"
+      : "bg-green-50 text-green-700";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${saveState === "error" ? "bg-red-500" : "bg-green-500"}`} />
+      {label}
+    </span>
   );
 }
 
