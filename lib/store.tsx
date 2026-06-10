@@ -27,10 +27,34 @@ interface StoreContextValue {
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
+// Palette lanci armonizzata col brand (teal, oro, terracotta, salvia, prugna…)
 const LAUNCH_COLORS = [
-  "#d04763", "#2563eb", "#16a34a", "#d97706", "#9333ea",
-  "#0891b2", "#db2777", "#65a30d", "#dc2626", "#0d9488",
+  "#0a2838", "#e0a92e", "#c2683b", "#3e7c6a", "#7a5c99",
+  "#f5c141", "#557e8f", "#9a6a4b", "#5b8a72", "#b5854c",
 ];
+
+// Migrazione: i vecchi colori dei lanci esistenti vengono mappati su quelli di brand.
+const COLOR_MIGRATION: Record<string, string> = {
+  "#2563eb": "#0a2838", // Pesce
+  "#0891b2": "#c2683b", // Meal Prep (Rilancio)
+  "#d97706": "#e0a92e", // Spezie
+  "#16a34a": "#3e7c6a", // Meal Prep 2026
+  "#9333ea": "#7a5c99", // Legumi
+};
+
+/** Restituisce i dati con i colori migrati e un flag se qualcosa è cambiato. */
+function migrateColors(data: DashboardData): { data: DashboardData; changed: boolean } {
+  let changed = false;
+  const launches = data.launches.map((l) => {
+    const mapped = COLOR_MIGRATION[l.color?.toLowerCase()];
+    if (mapped && mapped !== l.color) {
+      changed = true;
+      return { ...l, color: mapped };
+    }
+    return l;
+  });
+  return { data: changed ? { ...data, launches } : data, changed };
+}
 
 /** Crea un nuovo lancio vuoto, con una sezione iniziale di esempio. */
 function makeNewLaunch(existing: Launch[]): Launch {
@@ -124,23 +148,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         if (remote.configured) {
           if (remote.data && Array.isArray(remote.data.launches)) {
-            // Il cloud è la fonte di verità.
-            setData(remote.data);
-            saveLocal(remote.data);
+            // Il cloud è la fonte di verità (con eventuale migrazione colori).
+            const migrated = migrateColors(remote.data);
+            setData(migrated.data);
+            saveLocal(migrated.data);
+            if (migrated.changed) void pushRemote(migrated.data);
           } else {
             // Cloud collegato ma vuoto: lo inizializziamo coi dati locali/seed.
-            setData(local);
+            const init = migrateColors(local).data;
+            setData(init);
             skipNextSave.current = false; // forza il primo push
-            void pushRemote(local);
+            void pushRemote(init);
           }
           setMode("remote");
         } else {
-          setData(local);
+          setData(migrateColors(local).data);
           setMode("local");
         }
       } catch {
         if (cancelled) return;
-        setData(local);
+        setData(migrateColors(local).data);
         setMode("local");
       } finally {
         if (!cancelled) setHydrated(true);

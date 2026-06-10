@@ -16,7 +16,7 @@ export const seedData: DashboardData = {
       name: "Pesce (Rilancio)",
       periodo: "Luglio 2024",
       date: "2024-07-01",
-      color: "#2563eb",
+      color: "#0a2838",
       kpis: {
         leadTotali: 169,
         numeroAcquisti: 13,
@@ -68,7 +68,7 @@ export const seedData: DashboardData = {
       name: "Meal Prep (Rilancio)",
       periodo: "Gennaio 2025",
       date: "2025-01-01",
-      color: "#0891b2",
+      color: "#c2683b",
       kpis: {
         leadTotali: 629,
         numeroAcquisti: 78,
@@ -167,7 +167,7 @@ export const seedData: DashboardData = {
       name: "Spezie",
       periodo: "Marzo 2025",
       date: "2025-03-01",
-      color: "#d97706",
+      color: "#e0a92e",
       kpis: {
         leadTotali: 585,
         corsisti: 168,
@@ -230,7 +230,7 @@ export const seedData: DashboardData = {
       name: "Meal Prep 2026",
       periodo: "Gennaio 2026",
       date: "2026-01-01",
-      color: "#16a34a",
+      color: "#3e7c6a",
       kpis: {
         leadTotali: 3510,
         corsisti: 137,
@@ -384,7 +384,7 @@ export const seedData: DashboardData = {
       name: "Legumi",
       periodo: "Maggio 2026",
       date: "2026-05-01",
-      color: "#9333ea",
+      color: "#7a5c99",
       kpis: {
         leadTotali: 1328,
         corsisti: 358,

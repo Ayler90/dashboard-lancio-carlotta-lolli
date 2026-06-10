@@ -67,10 +67,20 @@ export default function LaunchDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span
-            className="h-10 w-1.5 rounded-full"
-            style={{ backgroundColor: current.color }}
-          />
+          {editing ? (
+            <input
+              type="color"
+              value={draft.color}
+              onChange={(e) => handleMetaChange({ color: e.target.value })}
+              title="Colore del lancio"
+              className="h-10 w-10 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5"
+            />
+          ) : (
+            <span
+              className="h-10 w-1.5 rounded-full"
+              style={{ backgroundColor: current.color }}
+            />
+          )}
           <div>
             {editing ? (
               <div className="flex flex-wrap gap-2">
@@ -111,7 +121,7 @@ export default function LaunchDetail({
               </button>
               <button
                 onClick={save}
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+                className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-medium text-cream shadow-sm transition hover:bg-ink-800"
               >
                 Salva modifiche
               </button>

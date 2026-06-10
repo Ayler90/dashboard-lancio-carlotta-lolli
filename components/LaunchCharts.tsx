@@ -14,9 +14,9 @@ import {
 import { Launch, Section } from "@/lib/types";
 
 const PALETTE = [
-  "#d04763", "#2563eb", "#16a34a", "#d97706", "#9333ea",
-  "#0891b2", "#db2777", "#65a30d", "#dc2626", "#0d9488",
-  "#7c3aed", "#ea580c", "#4f46e5",
+  "#0a2838", "#f5c141", "#c2683b", "#3e7c6a", "#7a5c99",
+  "#e0a92e", "#557e8f", "#9a6a4b", "#5b8a72", "#84a6b6",
+  "#b5854c", "#3b6173", "#8c6b4f",
 ];
 
 function sectionToChartData(section: Section) {

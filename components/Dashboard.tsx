@@ -100,7 +100,7 @@ export default function Dashboard() {
 
       {/* Tabs */}
       <nav className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
-        <TabButton active={active === OVERVIEW} onClick={() => setActive(OVERVIEW)} color="#d04763">
+        <TabButton active={active === OVERVIEW} onClick={() => setActive(OVERVIEW)} color="#0a2838">
           ★ Confronto
         </TabButton>
         {launches.map((l) => (
