@@ -10,7 +10,7 @@ import LaunchDetail from "./LaunchDetail";
 const OVERVIEW = "__overview__";
 
 export default function Dashboard() {
-  const { data, replaceData, resetToSeed, hydrated, mode, saveState } = useStore();
+  const { data, addLaunch, replaceData, resetToSeed, hydrated, mode, saveState } = useStore();
   const [active, setActive] = useState<string>(OVERVIEW);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +113,13 @@ export default function Dashboard() {
             {l.name}
           </TabButton>
         ))}
+        <button
+          onClick={() => setActive(addLaunch())}
+          title="Aggiungi un nuovo lancio"
+          className="ml-1 shrink-0 whitespace-nowrap rounded-md px-3 py-2.5 text-sm font-medium text-brand-600 transition hover:bg-brand-50"
+        >
+          + Nuovo lancio
+        </button>
       </nav>
 
       {/* Content */}
@@ -121,7 +128,7 @@ export default function Dashboard() {
       ) : active === OVERVIEW ? (
         <OverviewView data={data} />
       ) : activeLaunch ? (
-        <LaunchDetail launch={activeLaunch} />
+        <LaunchDetail launch={activeLaunch} onDeleted={() => setActive(OVERVIEW)} />
       ) : null}
 
       <footer className="mt-12 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">

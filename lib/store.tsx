@@ -12,6 +12,10 @@ export type SaveState = "idle" | "saving" | "saved" | "error";
 interface StoreContextValue {
   data: DashboardData;
   updateLaunch: (launch: Launch) => void;
+  /** Crea un nuovo lancio vuoto e ne restituisce l'id */
+  addLaunch: () => string;
+  /** Elimina un lancio per id */
+  deleteLaunch: (id: string) => void;
   replaceData: (data: DashboardData) => void;
   resetToSeed: () => void;
   hydrated: boolean;
@@ -22,6 +26,41 @@ interface StoreContextValue {
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
+
+const LAUNCH_COLORS = [
+  "#d04763", "#2563eb", "#16a34a", "#d97706", "#9333ea",
+  "#0891b2", "#db2777", "#65a30d", "#dc2626", "#0d9488",
+];
+
+/** Crea un nuovo lancio vuoto, con una sezione iniziale di esempio. */
+function makeNewLaunch(existing: Launch[]): Launch {
+  const now = new Date();
+  const mesi = [
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+  ];
+  const color = LAUNCH_COLORS[existing.length % LAUNCH_COLORS.length];
+  return {
+    id: `lancio-${Date.now()}`,
+    name: "Nuovo lancio",
+    periodo: `${mesi[now.getMonth()]} ${now.getFullYear()}`,
+    date: now.toISOString().slice(0, 10),
+    color,
+    kpis: {},
+    sections: [
+      {
+        id: `sez-${Date.now()}`,
+        title: "Dati principali",
+        columns: ["Voce", "Numero"],
+        rows: [
+          { label: "Lead", values: [null] },
+          { label: "Acquisti", values: [null] },
+          { label: "Fatturato €", values: [null] },
+        ],
+      },
+    ],
+  };
+}
 
 /** Carica i dati dal localStorage (cache), altrimenti i dati seed. */
 function loadLocal(): DashboardData {
@@ -71,6 +110,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Evita di salvare in remoto durante l'idratazione iniziale.
   const skipNextSave = useRef(true);
+  // Riferimento sempre aggiornato ai dati correnti.
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   // Idratazione: prima il cloud, poi fallback su localStorage/seed.
   useEffect(() => {
@@ -136,6 +178,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const addLaunch = useCallback(() => {
+    const launch = makeNewLaunch(dataRef.current.launches);
+    setData((prev) => ({ ...prev, launches: [...prev.launches, launch] }));
+    return launch.id;
+  }, []);
+
+  const deleteLaunch = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      launches: prev.launches.filter((l) => l.id !== id),
+    }));
+  }, []);
+
   const replaceData = useCallback((next: DashboardData) => {
     setData(next);
   }, []);
@@ -146,7 +201,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ data, updateLaunch, replaceData, resetToSeed, hydrated, mode, saveState }}
+      value={{ data, updateLaunch, addLaunch, deleteLaunch, replaceData, resetToSeed, hydrated, mode, saveState }}
     >
       {children}
     </StoreContext.Provider>

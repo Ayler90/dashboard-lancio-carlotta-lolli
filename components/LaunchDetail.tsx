@@ -7,8 +7,14 @@ import EditableTable from "./EditableTable";
 import KpiEditor from "./KpiEditor";
 import LaunchCharts from "./LaunchCharts";
 
-export default function LaunchDetail({ launch }: { launch: Launch }) {
-  const { updateLaunch } = useStore();
+export default function LaunchDetail({
+  launch,
+  onDeleted,
+}: {
+  launch: Launch;
+  onDeleted: () => void;
+}) {
+  const { updateLaunch, deleteLaunch } = useStore();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Launch>(launch);
 
@@ -46,6 +52,17 @@ export default function LaunchDetail({ launch }: { launch: Launch }) {
     setEditing(false);
   };
 
+  const remove = () => {
+    if (
+      confirm(
+        `Eliminare il lancio "${launch.name}"? L'operazione non può essere annullata.`
+      )
+    ) {
+      deleteLaunch(launch.id);
+      onDeleted();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -80,6 +97,12 @@ export default function LaunchDetail({ launch }: { launch: Launch }) {
         <div className="flex gap-2">
           {editing ? (
             <>
+              <button
+                onClick={remove}
+                className="mr-auto rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+              >
+                🗑 Elimina lancio
+              </button>
               <button
                 onClick={cancel}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
